@@ -338,7 +338,7 @@ out:
     return 0;
 }
 
-int rpmsg_neo_proxy(struct rpmsg_channel *rpmsg_chnl,rpmsg_neo_remove_t *remove_func )
+int rpmsg_neo_proxy(struct rpmsg_channel *rpmsg_chnl,rpmsg_neo_remove_t **remove_func )
 {
     int err = 0;
 

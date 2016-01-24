@@ -173,7 +173,7 @@ static int rpmsg_neo_tty_remove(void )
 }
 
 
-int rpmsg_neo_tty(struct rpmsg_channel *rpmsg_chnl,rpmsg_neo_remove_t *remove_func )
+int rpmsg_neo_tty(struct rpmsg_channel *rpmsg_chnl,rpmsg_neo_remove_t **remove_func )
 {
     int err = 0;
     struct rpmsgtty_port *cport = &rpmsg_tty_port;
