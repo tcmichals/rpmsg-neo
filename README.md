@@ -10,5 +10,5 @@ The goal is to have one general Linux driver to support (1) Channel and (2) endp
 - endpt 125 is for Ethernet driver. Linux (Ethernet) (rpmsg) <-----> rpmsg LwIP stack FreeRTOS (M4)
 
 
-usr-neoproxy.c is a user app with epoll to access rpmsg usr space app.  This more work to do for the protocol.
+usr-neoproxy.c is a test program to send, validate and provide bandwidth information.  Uses libev (http://software.schmorp.de/pkg/libev.html) library to manage epoll 
 
