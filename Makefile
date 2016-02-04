@@ -21,4 +21,5 @@ clean:
 	rm -f *.ko
 	rm -f *.mod.*
 	rm -f *~
+	rm -f .*
 

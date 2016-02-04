@@ -57,11 +57,6 @@ static void rpmsg_tty_cb(struct rpmsg_channel *rpdev, void *data, int len,
     if (len == 0)
         return;
 
-    dev_dbg(&rpdev->dev, "msg(<- src 0x%x) len %d\n", src, len);
-
-    print_hex_dump(KERN_DEBUG, __func__, DUMP_PREFIX_NONE, 16, 1,
-                   data, len,  true);
-
     spin_lock_bh(&cport->rx_lock);
     space = tty_prepare_flip_string(&cport->port, &cbuf, len);
     if (space <= 0)
@@ -71,7 +66,10 @@ static void rpmsg_tty_cb(struct rpmsg_channel *rpdev, void *data, int len,
         return;
     }
 
-    memcpy(cbuf, data, len);
+    if( space != len)
+        pr_err("Trunc buffer %d\n", len-space);
+
+    memcpy(cbuf, data, space);
     tty_flip_buffer_push(&cport->port);
     spin_unlock_bh(&cport->rx_lock);
 }
@@ -153,7 +151,6 @@ static const struct tty_operations imxrpmsgtty_ops =
 
 
 
-
 static struct tty_driver *rpmsgtty_driver;
 
 
@@ -173,21 +170,17 @@ static int rpmsg_neo_tty_remove(void )
 }
 
 
-int rpmsg_neo_tty(struct rpmsg_channel *rpmsg_chnl,rpmsg_neo_remove_t **remove_func )
+int rpmsg_neo_tty(struct rpmsg_channel *rpmsg_chnl,rpmsg_neo_remove_t *remove_func )
 {
     int err = 0;
     struct rpmsgtty_port *cport = &rpmsg_tty_port;
 
     *remove_func =  rpmsg_neo_tty_remove;
 
-    pr_info(" %s %d\n",  __FUNCTION__, __LINE__);
-
     memset(cport, 0, sizeof(rpmsg_tty_port));
 
     cport->rpmsg_chnl = rpmsg_chnl;
     cport->endpt = TTY_ENPT;
-
-    pr_info(" %s %d\n",  __FUNCTION__, __LINE__);
 
     cport->ept = rpmsg_create_ept(cport->rpmsg_chnl,
                                   rpmsg_tty_cb,
@@ -199,30 +192,33 @@ int rpmsg_neo_tty(struct rpmsg_channel *rpmsg_chnl,rpmsg_neo_remove_t **remove_f
         err = -1;
         goto error0;
     }
-
-
-
-    rpmsgtty_driver = tty_alloc_driver(1, TTY_DRIVER_UNNUMBERED_NODE);
+    
+    rpmsgtty_driver = tty_alloc_driver(1, TTY_DRIVER_RESET_TERMIOS |
+			TTY_DRIVER_REAL_RAW |
+			TTY_DRIVER_UNNUMBERED_NODE);
     if (IS_ERR(rpmsgtty_driver))
     {
+        pr_err("ERROR:%s %d Failed to alloc tty\n", __FUNCTION__, __LINE__);
         rpmsg_destroy_ept(cport->ept);
         return PTR_ERR(rpmsgtty_driver);
     }
-
-    rpmsgtty_driver->driver_name = "rpmsg_tty";
-    rpmsgtty_driver->name = "ttyRPMSG";
-    rpmsgtty_driver->major = TTYAUX_MAJOR;
-    rpmsgtty_driver->minor_start = 3;
-    rpmsgtty_driver->type = TTY_DRIVER_TYPE_CONSOLE;
-    rpmsgtty_driver->init_termios = tty_std_termios;
-
-    tty_set_operations(rpmsgtty_driver, &imxrpmsgtty_ops);
-
-    tty_port_init(&cport->port);
-    cport->port.ops = &rpmsgtty_port_ops;
+         
     spin_lock_init(&cport->rx_lock);
     cport->port.low_latency = cport->port.flags | ASYNC_LOW_LATENCY;
-
+    
+    tty_port_init(&cport->port);
+    cport->port.ops = &rpmsgtty_port_ops;
+    
+    rpmsgtty_driver->driver_name = "ttyrpmsg";
+    rpmsgtty_driver->name = "ttyrpmsg";
+    rpmsgtty_driver->major = TTYAUX_MAJOR;
+    rpmsgtty_driver->minor_start = 4;
+    rpmsgtty_driver->type = TTY_DRIVER_TYPE_CONSOLE;
+    rpmsgtty_driver->init_termios = tty_std_termios;
+    rpmsgtty_driver->init_termios.c_oflag = OPOST | OCRNL | ONOCR | ONLRET;
+    tty_set_operations(rpmsgtty_driver, &imxrpmsgtty_ops);
+    tty_port_link_device(&cport->port, rpmsgtty_driver, 0);
+        
     err = tty_register_driver(rpmsgtty_driver);
     if (err < 0)
     {
@@ -237,11 +233,9 @@ int rpmsg_neo_tty(struct rpmsg_channel *rpmsg_chnl,rpmsg_neo_remove_t **remove_f
     return 0;
 
 error:
-    tty_unregister_driver(rpmsgtty_driver);
     put_tty_driver(rpmsgtty_driver);
     tty_port_destroy(&cport->port);
     rpmsgtty_driver = NULL;
-
     rpmsg_destroy_ept(cport->ept);
 
 

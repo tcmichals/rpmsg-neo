@@ -131,13 +131,9 @@ static void rpmsg_proxy_dev_rpmsg_drv_remove(struct rpmsg_channel *rpdev)
 
 }
 
-
-
 static int __init rpmsg_init(void)
 {
     int err = 0;
-
-    pr_info("%s %d\n",  __FUNCTION__, __LINE__);
 
     if ( (err = register_rpmsg_driver(&rpmsg_proxy_dev_drv)) != 0)
     {
@@ -152,8 +148,6 @@ static void __exit rpmsg_exit(void)
 {
     unregister_rpmsg_driver(&rpmsg_proxy_dev_drv);
 }
-
-
 
 
 module_init(rpmsg_init);

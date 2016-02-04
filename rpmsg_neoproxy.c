@@ -71,7 +71,6 @@ static int rpmsg_dev_open(struct inode *inode, struct file *filp)
 
     local;
 
-    pr_info("%s\n", __func__);
     return nonseekable_open(inode, filp);
 }
 
@@ -96,13 +95,10 @@ static ssize_t rpmsg_dev_write(struct file *filp,
         return -1;
     }
 
-    pr_info("%s writing len=%zd  to endpt =%d\n", __func__, size, local->endpt);
-
     err = rpmsg_sendto(local->rpmsg_chnl,
                        local->tx_buff,
                        size,
                        local->endpt);
-
     if (err)
     {
         pr_err("rpmsg_sendto (size = %d) error: %d\n", size, err);
@@ -237,21 +233,14 @@ static void rpmsg_proxy_dev_ept_cb(struct rpmsg_channel *rpdev, void *data,
 
     struct _rpmsg_params *local = ( struct _rpmsg_params *)priv;
 
-    int len_in = len;
-
-    /* Push data received into rpmsg kfifo */
-    if ((len % 8) != 0)
-    {
-        len_in = ((len/8) + 1) * 8;
-    }
     while(mutex_lock_interruptible(&local->sync_lock));
-    if (kfifo_avail(&local->rpmsg_kfifo) < len_in)
+    if (kfifo_avail(&local->rpmsg_kfifo) < len)
     {
         mutex_unlock(&local->sync_lock);
         return;
     }
 
-    kfifo_in(&local->rpmsg_kfifo, data, (unsigned int)len_in);
+    kfifo_in(&local->rpmsg_kfifo, data, (unsigned int)len);
 
     mutex_unlock(&local->sync_lock);
 
