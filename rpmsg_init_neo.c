@@ -99,6 +99,8 @@ static int rpmsg_proxy_dev_rpmsg_drv_probe(struct rpmsg_channel *rpdev)
 
     dev_set_drvdata(&rpdev->dev, local);
 
+            pr_info("INFO: %s %s %d\n", __FILE__, __FUNCTION__, __LINE__);
+
     if ( rpmsg_neo_proxy(local->rpmsg_chnl, &local->remove_proxy) || local->remove_proxy==NULL)
     {
         dev_err(&rpdev->dev, "Failed: rpmsg_neo_proxy\n");
@@ -117,6 +119,21 @@ static int rpmsg_proxy_dev_rpmsg_drv_probe(struct rpmsg_channel *rpdev)
         goto error2;
 
     }
+    
+    if ( rpmsg_neo_ethernet(local->rpmsg_chnl, &local->remove_ethernet) ||  local->remove_ethernet==NULL)
+    {
+        dev_err(&rpdev->dev, "Failed: rpmsg_neo_ethernet\n");
+
+        if(local->remove_proxy)
+            local->remove_proxy();
+
+        if(local->remove_tty)
+            local->remove_tty();
+        
+        goto error2;
+
+    }    
+   
     goto out;
 error2:
     return -ENODEV;
@@ -138,7 +155,6 @@ static int __init rpmsg_init(void)
     if ( (err = register_rpmsg_driver(&rpmsg_proxy_dev_drv)) != 0)
     {
         pr_err("ERROR: %s %d rc=%d\n",  __FUNCTION__, __LINE__,err);
-
     }
 
     return err;

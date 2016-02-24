@@ -31,8 +31,8 @@
 #include <linux/poll.h>
 
 #include "rpmsg_neo.h"
+#include "rpmsg_neoproxy.h"
 
-#define MAX_RPMSG_BUFF_SIZE             (512 - sizeof(struct rpmsg_hdr))
 #define RPMSG_KFIFO_SIZE                (MAX_RPMSG_BUFF_SIZE * 4)
 
 #define IOCTL_CMD_GET_KFIFO_SIZE        1
@@ -50,7 +50,7 @@ struct _rpmsg_params
     int block_flag;
     struct rpmsg_channel *rpmsg_chnl;
     struct rpmsg_endpoint *ept;
-    char tx_buff[MAX_RPMSG_BUFF_SIZE]; /* buffer to keep the message to send */
+    char tx_buff[RPMSG_KFIFO_SIZE]; /* buffer to keep the message to send */
     u32 endpt;
 };
 
@@ -268,7 +268,7 @@ static struct _rpmsg_device rpmsg_miscdevice0 =
     .device.minor = MISC_DYNAMIC_MINOR,
     .device.name  = "rpmsg0",
     .device.fops = &rpmsg_dev_fops,
-    .endpt = 127,
+    .endpt = RPMSG_PROXY_ENDPOINT,
 
 };
 

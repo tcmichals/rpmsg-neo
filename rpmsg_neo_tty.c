@@ -22,12 +22,10 @@
 #include <linux/virtio.h>
 
 #include "rpmsg_neo.h"
+#include "rpmsg_neoproxy.h"
 
-
-#define RPMSG_MAX_SIZE	(512 - sizeof(struct rpmsg_hdr))
+#define RPMSG_MAX_SIZE	MAX_RPMSG_BUFF_SIZE
 #define MSG		"hello world!"
-#define TTY_ENPT        126
-
 
 /*
  * struct rpmsgtty_port - Wrapper struct for imx rpmsg tty port.
@@ -56,6 +54,11 @@ static void rpmsg_tty_cb(struct rpmsg_channel *rpdev, void *data, int len,
     /* flush the recv-ed none-zero data to tty node */
     if (len == 0)
         return;
+ /*
+    pr_info("%s lenrcved=%d\n", __FUNCTION__, len);
+    print_hex_dump(KERN_DEBUG, __func__, DUMP_PREFIX_NONE, 16, 1,
+                    data, len,  true);
+*/                    
 
     spin_lock_bh(&cport->rx_lock);
     space = tty_prepare_flip_string(&cport->port, &cbuf, len);
@@ -108,8 +111,13 @@ static int rpmsgtty_write(struct tty_struct *tty, const unsigned char *buf,
 
     count = total;
     tbuf = buf;
+
     do
     {
+/*
+pr_info("%s lentx=%d\n", __FUNCTION__, total);
+ 	print_hex_dump(KERN_DEBUG, __func__, DUMP_PREFIX_NONE, 16, 1,buf, total,  true);
+*/
         /* send a message to our remote processor */
         ret = rpmsg_sendto(rpmsg_chnl, (void *)tbuf,
                            count > RPMSG_MAX_SIZE ? RPMSG_MAX_SIZE : count, rptty_port->endpt);
@@ -180,7 +188,7 @@ int rpmsg_neo_tty(struct rpmsg_channel *rpmsg_chnl,rpmsg_neo_remove_t *remove_fu
     memset(cport, 0, sizeof(rpmsg_tty_port));
 
     cport->rpmsg_chnl = rpmsg_chnl;
-    cport->endpt = TTY_ENPT;
+    cport->endpt = RPMSG_TTY_ENPT;
 
     cport->ept = rpmsg_create_ept(cport->rpmsg_chnl,
                                   rpmsg_tty_cb,
@@ -215,7 +223,9 @@ int rpmsg_neo_tty(struct rpmsg_channel *rpmsg_chnl,rpmsg_neo_remove_t *remove_fu
     rpmsgtty_driver->minor_start = 4;
     rpmsgtty_driver->type = TTY_DRIVER_TYPE_CONSOLE;
     rpmsgtty_driver->init_termios = tty_std_termios;
-    rpmsgtty_driver->init_termios.c_oflag = OPOST | OCRNL | ONOCR | ONLRET;
+  //  rpmsgtty_driver->init_termios.c_oflag = OPOST | OCRNL | ONOCR | ONLRET;
+rpmsgtty_driver->init_termios.c_cflag |= CLOCAL;
+
     tty_set_operations(rpmsgtty_driver, &imxrpmsgtty_ops);
     tty_port_link_device(&cport->port, rpmsgtty_driver, 0);
         
